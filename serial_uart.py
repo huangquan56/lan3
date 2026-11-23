@@ -1,5 +1,4 @@
 import argparse
-import time
 
 import serial
 
@@ -7,7 +6,7 @@ import serial
 # 泰山派板载 UART3。USB 转 TTL 通常使用 /dev/ttyUSB0。
 SERIAL_PORT = "/dev/ttyS3"
 BAUD_RATE = 9600
-SEND_INTERVAL = 0.5
+TEST_FRAME = b"@ABCD\r\n"
 
 
 def open_serial(port=SERIAL_PORT):
@@ -24,17 +23,30 @@ def open_serial(port=SERIAL_PORT):
     )
 
 
+def echo_test_frames(uart):
+    matched = 0
+    while True:
+        received = uart.read(1)
+        if not received:
+            continue
+
+        if received == TEST_FRAME[matched:matched + 1]:
+            matched += 1
+            if matched == len(TEST_FRAME):
+                uart.write(TEST_FRAME)
+                matched = 0
+        else:
+            matched = int(received == b"@")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="每 500 ms 发送一次 ABCD")
+    parser = argparse.ArgumentParser(description="收到完整的 @ABCD 帧后原样回传")
     parser.add_argument("port", nargs="?", default=SERIAL_PORT, help="串口设备路径")
     args = parser.parse_args()
 
     try:
         with open_serial(args.port) as uart:
-            while True:
-                next_send = time.monotonic() + SEND_INTERVAL
-                uart.write(b"ABCD")
-                time.sleep(max(0, next_send - time.monotonic()))
+            echo_test_frames(uart)
     except KeyboardInterrupt:
         pass
     except serial.SerialException as error:
