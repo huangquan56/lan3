@@ -5,13 +5,9 @@ from 二维码 import read_QR_one,TASK_a,TASK_b,TASK_c
 import time
 import serial
 
-from 蓝3.taishanpi_rk3566_vision import MIN_AREA, result
+from serial_uart import open_serial
 
 DEBUG=False
-# USB转TTL(CH340)接USB口使用 /dev/ttyUSB0
-# 如果使用板载UART3(GPIO) 修改为 SERIAL_PORT = "/dev/ttyS3"
-SERIAL_PORT = '/dev/ttyS3'
-BAUD_RATE = 115200
 
 # TASK_a 编号对应颜色：1=红  2=绿  3=蓝
 # 格式：{任务编号: (下限HSV, 上限HSV)}
@@ -57,11 +53,8 @@ def init_serial():
     返回值：成功返回串口实例ser；失败返回None
     """
     try:
-        # timeout=0.1 串口读取超时时间，单位秒
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
-        return ser
-    except Exception as e:
-        # 串口打开失败：权限不足、接线错误、端口被其他程序占用
+        return open_serial()
+    except serial.SerialException as e:
         if DEBUG:
             print(f"SERIAL_OPEN_FAIL:{e}")
         return None
@@ -270,6 +263,7 @@ def run_task3(ser):
 
 
 def run_task4():
+    return
 
 
 
