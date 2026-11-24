@@ -49,6 +49,16 @@ STATIC_THRESHOLD = 15       # 帧差灰度阈值
 STATIC_PIXEL_CNT = 400      # 变动像素小于该值认为画面不动
 STATIC_FRAME_CNT = 5       # 连续N帧不动判定转盘停稳
 
+# ========= T5安置区任务参数（TASK_c 编号对应安置区颜色：1=红 2=蓝 3=黑）=========
+ZONE_MAP = {
+    1: (np.array([0, 120, 80]),   np.array([10, 255, 255])),   # 红色安置区
+    2: (np.array([100, 120, 60]), np.array([130, 255, 255])),  # 蓝色安置区
+    3: (np.array([0, 0, 0]),      np.array([180, 255, 60])),   # 黑色安置区
+}
+ZONE_MIN_AREA = 400      # 安置区圆圈最小面积，现场按画面调
+ZONE_TOLERANCE = 15      # 左右对准容差（像素）
+ZONE_MAX_FRAME = 600     # 超时防死循环
+
 CMD_LEFT = "LEFT"
 CMD_RIGHT = "RIGHT"
 CMD_GO = "GO"
@@ -243,6 +253,77 @@ def find_box(link):
     return "T3_ok" if arrive_flag else "T3_fail_timeout"
 
 
+def find_zone(link):
+    # 安置区：识别安置区圆圈颜色，左右对准到圆圈中心后停车
+    if 二维码2.TASK_c not in ZONE_MAP:
+        send(link, CMD_STOP)
+        return "T5_fail_task"
+    low, high = ZONE_MAP[二维码2.TASK_c]
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        send(link, CMD_STOP)
+        return "T5_fail_cam"
+    stable_frame = 0
+    arrive_flag = False
+    frame_width = None
+    mid_x = 0
+
+    for _ in range(ZONE_MAX_FRAME):
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        if frame_width is None:
+            frame_width = frame.shape[1]
+            mid_x = frame_width // 2
+            # 如果摄像头和机械臂偏移：mid_x = frame_width//2 +20
+
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask_zone = cv2.inRange(hsv, low, high)
+        contours, _ = cv2.findContours(mask_zone, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        have_zone = False
+        zone_cx = 0
+
+        valid_zone = [c for c in contours if cv2.contourArea(c) >= ZONE_MIN_AREA]
+        if valid_zone:
+            max_c = max(valid_zone, key=cv2.contourArea)
+            M = cv2.moments(max_c)
+            if M["m00"] == 0:
+                stable_frame = 0
+                continue
+            have_zone = True
+            zone_cx = int(M["m10"] / M["m00"])
+
+        # 防抖
+        if have_zone:
+            stable_frame += 1
+        else:
+            stable_frame = 0
+            send(link, CMD_STOP)  # 丢目标立刻停车
+            continue
+
+        if stable_frame >= STABLE_COUNT:
+            offset = abs(zone_cx - mid_x)
+            if zone_cx >= mid_x:
+                if offset >= ZONE_TOLERANCE:
+                    send(link, CMD_BACK)
+                else:
+                    send(link, CMD_STOP)
+                    arrive_flag = True
+                    break
+            else:
+                if offset >= ZONE_TOLERANCE:
+                    send(link, CMD_GO)
+                else:
+                    send(link, CMD_STOP)
+                    arrive_flag = True
+                    break
+
+    cap.release()
+    send(link, CMD_STOP)
+    return "T5_ok" if arrive_flag else "T5_fail_timeout"
+
+
 def car_stop(link):
     send(link, CMD_STOP)
 
@@ -332,6 +413,12 @@ def run_task4(link):
     else:
         return "4_FAIL"
 
+
+def run_task5(link):
+    res = find_zone(link)
+    return res
+
+
 def main():
     # 用 SerialLink 打开串口（参数默认走 serial_link.py 顶部配置）
     link = None
@@ -361,6 +448,9 @@ def main():
                     send(link, res)
                 elif cmd == "T4":
                     res = run_task4(link)
+                    send(link, res)
+                elif cmd == "T5":  # 安置区对准
+                    res = run_task5(link)
                     send(link, res)
                 elif cmd == "STOP":
                     car_stop(link)
