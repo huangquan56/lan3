@@ -40,12 +40,12 @@ def is_ok_qr(text):         #解码立即校验
             text=str(text[0])
         else:
             return False
-        if not isinstance(text,str):
-            return False
-        t=text.strip()
-        if QR_ALT_PAT.match(t):
-            return True
+    if not isinstance(text,str):
         return False
+    t=text.strip()
+    if QR_ALT_PAT.match(t):
+        return True
+    return False
 
 
 def enhance(img):    #强化图
@@ -55,9 +55,17 @@ def enhance(img):    #强化图
     binary=cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,blockSize=21,C=4)
     # _,binary = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
     return binary
+def _detect(img):
+    # 兼容不同 cv2 版本：detectAndDecode 可能返回 2 个值(retval,points)或 3 个值(+straight_qrcode)
+    r = detector.detectAndDecode(img)
+    if len(r) == 2:
+        return r[0], r[1], None
+    return r[0], r[1], r[2]
+
+
 def try_next(img):    #多重检测
     # 1. 直接用原图
-    data, pts, _ = detector.detectAndDecode(img)
+    data, pts, _ = _detect(img)
     if data and pts is not None:
         return data, pts
 
@@ -65,20 +73,20 @@ def try_next(img):    #多重检测
     scale = 1.2
     img_big = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
     # 2. 放大后的原图
-    data2, pts2, _ = detector.detectAndDecode(img_big)
+    data2, pts2, _ = _detect(img_big)
     if data2 and pts2 is not None:
         return data2, pts2 / scale
 
     # 3. 增强二值兜底
     bin1 = enhance(img)
-    data3, pts3, _ = detector.detectAndDecode(bin1)
+    data3, pts3, _ = _detect(bin1)
     if data3 and pts3 is not None:
         return data3, pts3
 
     # 4. 反色二值兜底
     img_inv = 255 - img
     bin3 = enhance(img_inv)
-    data4, pts4, _ = detector.detectAndDecode(bin3)
+    data4, pts4, _ = _detect(bin3)
     if data4 and pts4 is not None:
         return data4, pts4
 
