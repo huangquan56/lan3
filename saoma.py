@@ -37,7 +37,10 @@ def gen_frames():
             time.sleep(0.1)
             continue
 
-        data, pts = qr.try_next(frame)
+        try:
+            data, pts = qr.try_next(frame)
+        except cv2.error:            # OpenCV 4.2 偶发异常，兜住不中断推流
+            data, pts = "", None
 
         if data != "":
             if data == last_data:

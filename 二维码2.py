@@ -57,7 +57,11 @@ def enhance(img):    #强化图
     return binary
 def _detect(img):
     # 兼容不同 cv2 版本：detectAndDecode 可能返回 2 个值(retval,points)或 3 个值(+straight_qrcode)
-    r = detector.detectAndDecode(img)
+    try:
+        r = detector.detectAndDecode(img)
+    except cv2.error:
+        # OpenCV 4.2 偶发：候选二维码点退化(contourArea 为 NaN)会抛异常，跳过这一帧即可
+        return "", None, None
     if len(r) == 2:
         return r[0], r[1], None
     return r[0], r[1], r[2]
@@ -109,7 +113,7 @@ def read_QR_one(timeout_sec=8):                      #对外调用
         if not ret:
             cv2.waitKey(1)
             continue
-        data,pts,_=try_next(frame)
+        data,pts=try_next(frame)
         if data!="":
             if data==last_data:
                 stable_frame+=1
