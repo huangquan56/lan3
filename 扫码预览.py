@@ -5,7 +5,6 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2
-import numpy as np
 
 from 二维码2 import try_next, parse_QR, is_ok_qr
 
