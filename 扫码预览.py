@@ -5,6 +5,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2
+import numpy as np
 
 from 二维码2 import try_next, parse_QR, is_ok_qr
 
@@ -37,7 +38,7 @@ def gen_frames():
 
         try:
             data, pts = try_next(frame)      # try_next 返回 2 个值
-        except cv2.error:                    # OpenCV 4.2 偶发：二维码点非法会抛异常
+        except Exception:                    # zbar 未安装/偶发异常时跳过这一帧
             data, pts = "", None
 
         if data != "":

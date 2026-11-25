@@ -37,7 +37,11 @@ def gen_frames():
             time.sleep(0.1)
             continue
 
-        data, pts = qr.try_next(frame)
+        try:
+            data, pts = qr.try_next(frame)
+        except Exception as e:        # zbar 未安装/偶发异常时不中断推流
+            print("ERR:", e)
+            data, pts = "", None
 
         if data != "":
             if data == last_data:
