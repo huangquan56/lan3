@@ -60,11 +60,28 @@ def enhance(img):    #强化图
     binary=cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,blockSize=21,C=4)
     # _,binary = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
     return binary
+def _qr_only(s):
+    # 只启用二维码，关掉 DataBar 等其它码型（否则会刷 "seg->finder >= 0" 断言噪音）
+    try:
+        s.set_config(0, zbar.Config.ENABLE, 0)                   # 0=ZBAR_NONE，先全关
+        s.set_config(zbar.Symbol.QRCODE, zbar.Config.ENABLE, 1)  # 只留二维码
+        return
+    except Exception:
+        pass
+    try:
+        s.parse_config('disable')
+        s.parse_config('qrcode.enable')
+        return
+    except Exception:
+        pass
+    s.parse_config('enable')     # 兜底：老绑定用不了上面两种就退回全开
+
+
 def _get_scanner():
     global _zbar_scanner
     if _zbar_scanner is None:
         s = zbar.ImageScanner()
-        s.parse_config('enable')
+        _qr_only(s)
         _zbar_scanner = s
     return _zbar_scanner
 
