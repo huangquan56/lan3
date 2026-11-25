@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import cv2
 import numpy as np
 
-VIDEO_INDEX = 9          # ← USB 摄像头号，按 ls /dev/video* 的结果改
+VIDEO_INDEX = 10         # ← USB 摄像头号，按 ls /dev/video* 和实测结果改（video9 已消失，现为 10）
 PORT = 8001              # 避开 111.py 用的 8000
 STABLE_THRESHOLD = 3     # 连续几帧解出同样的内容才算稳定
 BOARD_IP = "192.168.137.100"

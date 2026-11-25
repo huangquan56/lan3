@@ -9,7 +9,7 @@ import numpy as np
 
 from 二维码2 import try_next, parse_QR, is_ok_qr
 
-VIDEO_INDEX = 9                 # ← USB 摄像头号（板子上是 9）
+VIDEO_INDEX = 10                # ← USB 摄像头号（video9 已消失，实测 10 为摄像头）
 STABLE_THRESHOLD = 3            # 连续 N 帧同一结果才认定
 
 cap = cv2.VideoCapture(VIDEO_INDEX, cv2.CAP_V4L2)
